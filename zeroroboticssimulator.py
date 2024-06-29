@@ -28,6 +28,42 @@ def check_collision(x1, y1, x2, y2, obj):
         return True
     return False
 
+def calculate_ideal_drop_off_position(current_position):
+    # Determine the quadrant
+    if current_position[0] >= 0 and current_position[1] >= 0:
+        quadrant = 1
+    elif current_position[0] < 0 and current_position[1] >= 0:
+        quadrant = 2
+    elif current_position[0] < 0 and current_position[1] < 0:
+        quadrant = 3
+    else:
+        quadrant = 4
+
+    # Calculate the ideal drop-off position based on the quadrant
+    if quadrant == 1:
+        distances = [
+            (distance(current_position[0], current_position[1], 0.4, current_position[1]), (0.4, current_position[1])),
+            (distance(current_position[0], current_position[1], current_position[0], 0.4), (current_position[0], 0.4))
+        ]
+    elif quadrant == 2:
+        distances = [
+            (distance(current_position[0], current_position[1], -0.4, current_position[1]), (-0.4, current_position[1])),
+            (distance(current_position[0], current_position[1], current_position[0], 0.4), (current_position[0], 0.4))
+        ]
+    elif quadrant == 3:
+        distances = [
+            (distance(current_position[0], current_position[1], -0.4, current_position[1]), (-0.4, current_position[1])),
+            (distance(current_position[0], current_position[1], current_position[0], -0.4), (current_position[0], -0.4))
+        ]
+    else:
+        distances = [
+            (distance(current_position[0], current_position[1], 0.4, current_position[1]), (0.4, current_position[1])),
+            (distance(current_position[0], current_position[1], current_position[0], -0.4), (current_position[0], -0.4))
+        ]
+
+    # Return the ideal drop-off position
+    return min(distances, key=lambda x: x[0])[1]
+
 def calculate_time_and_battery_consumption(starting_position, object_id):
     # Calculate time and battery consumption for moving to the object
     obj = OBJECTS[object_id]  # object_id is already an integer
@@ -46,8 +82,7 @@ def greedy_search(starting_position):
     image_quality = 0
     num_boxes_picked_up = 0
     object_order = []
-    movement_path = [starting_position]
-    drop_off_zone = [(0.4, 0.4), (0.4, -0.4), (-0.4, 0.4), (-0.4, -0.4)]  # drop off zone
+    movement_path = [starting_position] 
 
     # Create a priority queue to store objects to visit
     priority_queue = []
@@ -74,15 +109,18 @@ def greedy_search(starting_position):
         # Calculate the value of collecting the box
         value = calculate_image_quality(object_id)
 
+        # Calculate the penalty for not picking up the object
+        penalty = 20 if object_id in [0, 1, 2] else 10 if object_id in [3, 4, 5] else 0
+
         # Calculate the total time and battery consumption for collecting the object and dropping it off
-        ideal_drop_off_position = min(drop_off_zone, key=lambda x: distance(current_position[0], current_position[1], x[0], x[1]))
+        ideal_drop_off_position = calculate_ideal_drop_off_position((obj["x"], obj["y"]))
         time_consumption_to_drop_off = time_to_move(obj["x"], obj["y"], ideal_drop_off_position[0], ideal_drop_off_position[1])
         battery_consumption_to_drop_off = time_consumption_to_drop_off / 20
         total_time_consumption = time_consumption_to_object + time_consumption_to_drop_off
         total_battery_consumption = battery_consumption_to_object + battery_consumption_to_drop_off
 
         # Check if collecting the box is worth it
-        if value > total_battery_consumption and time + total_time_consumption <= 180:  # 300 is the maximum allowed time
+        if value > total_battery_consumption and time + total_time_consumption <= 180 and total_time_consumption > penalty:  # 180 is the maximum allowed time
             # Update time, battery, and image quality
             time += total_time_consumption
             battery -= total_battery_consumption
@@ -97,9 +135,11 @@ def greedy_search(starting_position):
             # Add object to the order
             object_order.append(object_id)
         else:
+            image_quality -= penalty  # subtract the penalty from the image quality
             break
 
     return object_order, time, battery, image_quality, num_boxes_picked_up, movement_path
+
 
 def main():
     starting_position = (0.5, 0.5)
@@ -109,7 +149,9 @@ def main():
     print("Battery:", battery)
     print("Image Quality:", image_quality)
     print("Number of Boxes Picked Up:", num_boxes_picked_up)
+    print("Score:", 180-time + battery + image_quality)
     print("Movement Path:")
+    
     for i, pos in enumerate(movement_path):
         if i == 0:
             print(f"Start at {pos}")
