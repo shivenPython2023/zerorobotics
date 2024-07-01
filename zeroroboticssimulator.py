@@ -13,13 +13,13 @@ OBJECTS = [
 
 STARTING_POSITIONS = [(0.5, 0.5), (0.5, -0.5), (-0.5, 0.5), (-0.5, -0.5)]
 
-ROBOT_SPEED = 0.42  # meters per 20 seconds
+ROBOT_SPEED = 0.25 # meters per 20 seconds
 
 def distance(x1, y1, x2, y2):
     return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
 def time_to_move(x1, y1, x2, y2):
-    return int(distance(x1, y1, x2, y2) / ROBOT_SPEED * 20)
+    return int(distance(x1, y1, x2, y2) / ROBOT_SPEED * 9)
 
 def check_collision(x1, y1, x2, y2, obj):
     # Check if the robot will collide with the object or its boundaries
@@ -68,7 +68,7 @@ def calculate_time_and_battery_consumption(starting_position, object_id):
     # Calculate time and battery consumption for moving to the object
     obj = OBJECTS[object_id]  # object_id is already an integer
     time_consumption = time_to_move(starting_position[0], starting_position[1], obj["x"], obj["y"])
-    battery_consumption = time_consumption / 20 * obj["mass"]
+    battery_consumption = time_consumption / 9 * obj["mass"]
     return time_consumption, battery_consumption
 
 def calculate_image_quality(object_id):
@@ -158,7 +158,7 @@ def greedy_search(starting_position):
 
 
 def main():
-    starting_position = (0.5, 0.5)
+    starting_position = (-0.5, 0.5)
     object_order, time, round_battery, image_quality, num_boxes_picked_up, movement_path = greedy_search(starting_position)
     print("Object Order:", object_order)
     print("Time:", time)
