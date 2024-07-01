@@ -165,7 +165,7 @@ def main():
     print("Battery:", round_battery)
     print("Image Quality:", image_quality)
     print("Number of Boxes Picked Up:", num_boxes_picked_up)
-    print("Score:", 180-time + round_battery + image_quality)
+    #print("Score:", 180-time + round_battery + image_quality)
     print("Movement Path:")
     
     for i, pos in enumerate(movement_path):
