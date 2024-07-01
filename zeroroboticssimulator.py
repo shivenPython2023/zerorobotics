@@ -76,6 +76,23 @@ def calculate_image_quality(object_id):
     obj = OBJECTS[object_id]
     return obj["value"]
 
+def calculate_distance(obj, current_position):
+    return ((obj["x"] - current_position[0]) ** 2 + (obj["y"] - current_position[1]) ** 2) ** 0.5
+
+def prioritize_objects(objects, current_position):
+    high_priority_objects = [obj for obj in objects if obj["value"] > 10]
+    low_priority_objects = [obj for obj in objects if obj["value"] <= 10]
+
+    high_priority_objects.sort(key=lambda obj: (obj["value"], calculate_distance(obj, current_position)))
+    low_priority_objects.sort(key=lambda obj: (obj["value"], calculate_distance(obj, current_position)))
+
+    priority_queue = []
+    for obj in high_priority_objects + low_priority_objects:
+        heapq.heappush(priority_queue, (-obj["value"], calculate_distance(obj, current_position), obj["id"]))
+
+    return priority_queue
+
+
 def greedy_search(starting_position):
     time = 0
     battery = 100
@@ -85,14 +102,12 @@ def greedy_search(starting_position):
     movement_path = [starting_position] 
 
     # Create a priority queue to store objects to visit
-    priority_queue = []
-    for obj in OBJECTS:
-        heapq.heappush(priority_queue, (-obj["value"], obj["id"]))
+    priority_queue = prioritize_objects(OBJECTS, starting_position) 
 
     current_position = starting_position
 
     while priority_queue:
-        _, object_id = heapq.heappop(priority_queue)
+        distance, _, object_id = heapq.heappop(priority_queue)
         obj = OBJECTS[object_id]
 
         # Check if the robot will collide with the object or its boundaries
@@ -124,6 +139,7 @@ def greedy_search(starting_position):
             # Update time, battery, and image quality
             time += total_time_consumption
             battery -= total_battery_consumption
+            round_battery= round(battery,1)
             image_quality += value
             num_boxes_picked_up += 1
 
@@ -138,18 +154,18 @@ def greedy_search(starting_position):
             image_quality -= penalty  # subtract the penalty from the image quality
             break
 
-    return object_order, time, battery, image_quality, num_boxes_picked_up, movement_path
+    return object_order, time, round_battery, image_quality, num_boxes_picked_up, movement_path
 
 
 def main():
     starting_position = (0.5, 0.5)
-    object_order, time, battery, image_quality, num_boxes_picked_up, movement_path = greedy_search(starting_position)
+    object_order, time, round_battery, image_quality, num_boxes_picked_up, movement_path = greedy_search(starting_position)
     print("Object Order:", object_order)
     print("Time:", time)
-    print("Battery:", battery)
+    print("Battery:", round_battery)
     print("Image Quality:", image_quality)
     print("Number of Boxes Picked Up:", num_boxes_picked_up)
-    print("Score:", 180-time + battery + image_quality)
+    print("Score:", 180-time + round_battery + image_quality)
     print("Movement Path:")
     
     for i, pos in enumerate(movement_path):
