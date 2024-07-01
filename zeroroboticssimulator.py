@@ -158,7 +158,7 @@ def greedy_search(starting_position):
 
 
 def main():
-    starting_position = (-0.5, 0.5)
+    starting_position = (0.5, 0.5)
     object_order, time, round_battery, image_quality, num_boxes_picked_up, movement_path = greedy_search(starting_position)
     print("Object Order:", object_order)
     print("Time:", time)
