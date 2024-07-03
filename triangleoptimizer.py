@@ -36,16 +36,22 @@ def calculate_ideal_drop_off_position(obj_being_held_id, next_obj_id):
     # Get the coordinates of the next object
     next_obj_x = next_obj["x"]
     next_obj_y = next_obj["y"]
-    next_obj_cords = next_obj_x, next_obj_y
+    next_obj_cords= (next_obj_x,next_obj_y)
 
     # Calculate the ideal drop-off position using the old function
     ideal_drop_off_x, ideal_drop_off_y = calculate_ideal_drop_off_position_old(next_obj_cords)
-
+    
+    # Calculate the movement path
+    movement_path = [(obj_being_held["x"] + t * (ideal_drop_off_x - obj_being_held["x"]), 
+                      obj_being_held["y"] + t * (ideal_drop_off_y - obj_being_held["y"])) 
+                     for t in np.arange(0, 1, 0.01)]
+    
     # Check for collisions with the next object
-    while comp_check_collision(obj_being_held, next_obj, [(ideal_drop_off_x, ideal_drop_off_y)]):
+    while comp_check_collision(obj_being_held, next_obj, movement_path):
         # Calculate the direction to move away from the next object
         dx = ideal_drop_off_x - obj_being_held["x"]
         dy = ideal_drop_off_y - obj_being_held["y"]
+        direction = "none"  # default direction
         if dx > 0 and dy > 0:
             direction = "left"
         elif dx > 0 and dy < 0:
@@ -64,9 +70,52 @@ def calculate_ideal_drop_off_position(obj_being_held_id, next_obj_id):
             ideal_drop_off_y += 0.01
         elif direction == "down":
             ideal_drop_off_y -= 0.01
+        else:
+            # If direction is "none", move in a default direction (e.g., up)
+            ideal_drop_off_y += 0.01
+
+        # Recalculate the movement path
+        movement_path = [(obj_being_held["x"] + t * (ideal_drop_off_x - obj_being_held["x"]), 
+                          obj_being_held["y"] + t * (ideal_drop_off_y - obj_being_held["y"])) 
+                         for t in np.arange(0, 1, 0.01)]
 
     return ideal_drop_off_x, ideal_drop_off_y
+def calculate_ideal_drop_off_position_old_old(current_position):
+    # Determine the quadrant
+    if current_position[0] >= 0 and current_position[1] >= 0:
+        quadrant = 1
+    elif current_position[0] < 0 and current_position[1] >= 0:
+        quadrant = 2
+    elif current_position[0] < 0 and current_position[1] < 0:
+        quadrant = 3
+    else:
+        quadrant = 4
 
+    # Calculate the ideal drop-off position based on the quadrant
+    if quadrant == 1:
+        distances = [
+            (distance(current_position[0], current_position[1], 0.4, current_position[1]), 0.4, current_position[1]),
+            (distance(current_position[0], current_position[1], current_position[0], 0.4), current_position[0], 0.4)
+        ]
+    elif quadrant == 2:
+        distances = [
+            (distance(current_position[0], current_position[1], -0.4, current_position[1]), -0.4, current_position[1]),
+            (distance(current_position[0], current_position[1], current_position[0], 0.4), current_position[0], 0.4)
+        ]
+    elif quadrant == 3:
+        distances = [
+            (distance(current_position[0], current_position[1], -0.4, current_position[1]), -0.4, current_position[1]),
+            (distance(current_position[0], current_position[1], current_position[0], -0.4), current_position[0], -0.4)
+        ]
+    else:
+        distances = [
+            (distance(current_position[0], current_position[1], 0.4, current_position[1]), 0.4, current_position[1]),
+            (distance(current_position[0], current_position[1], current_position[0], -0.4), current_position[0], -0.4)
+        ]
+
+    # Return the ideal drop-off position
+    _, x, y = min(distances, key=lambda x: x[0])
+    return x, y
 def calculate_ideal_drop_off_position_old(current_position):
     # Determine the quadrant
     if current_position[0] >= 0 and current_position[1] >= 0:
@@ -147,7 +196,7 @@ def comp_check_collision(obj_being_held, obj_to_check, movement_path):
             obj_being_held_y_min + segment_y <= obj_to_check_y_max and
             obj_being_held_y_max + segment_y >= obj_to_check_y_min):
             return True  # collision detected
-
+    print('got e')
     return False  # no collision detected
 
 
@@ -195,7 +244,10 @@ def greedy_search(starting_position):
             next_obj = 3
         
         # Calculate the ideal drop-off position
-        ideal_drop_off_x, ideal_drop_off_y = calculate_ideal_drop_off_position(object_id, next_obj)
+        if object_id is not 3:
+            ideal_drop_off_x, ideal_drop_off_y = calculate_ideal_drop_off_position(object_id, next_obj)
+        else:
+            ideal_drop_off_x, ideal_drop_off_y = calculate_ideal_drop_off_position_old_old((obj["x"],obj["y"]))
 
         # Calculate the total time and battery consumption for collecting the object and dropping it off
         time_consumption_to_drop_off = time_to_move(obj["x"], obj["y"], (ideal_drop_off_x, ideal_drop_off_y)[0], (ideal_drop_off_x, ideal_drop_off_y)[1])
@@ -217,6 +269,7 @@ def greedy_search(starting_position):
 
         # Add object to the order
         object_order.append(object_id)
+        print(object_id)
 
     return object_order, time, round_battery, image_quality, num_boxes_picked_up, movement_path_list
 
@@ -229,7 +282,7 @@ def main():
     print("Battery:", round_battery)
     print("Image Quality:", image_quality)
     print("Number of Boxes Picked Up:", num_boxes_picked_up)
-    print("Score:", 0.8*180-time + round_battery + 1.2*image_quality)
+    print("Score:", 0.8*(180-time) + round_battery + 1.2*image_quality)
     print("Movement Path:")
     
     for i, pos in enumerate(movement_path_list):
