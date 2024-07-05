@@ -1,3 +1,4 @@
+
 import itertools
 
 # Distance matrix based on the given data
@@ -20,18 +21,31 @@ def calculate_total_distance(order, distance_matrix):
         total_distance += distance_matrix[order[i]][order[i + 1]]
     return total_distance
 
-# Generate all permutations of the objects
-permutations = list(itertools.permutations(range(num_objects)))
+# Function to find the optimal order starting from a given object
+def find_optimal_order(starting_object, distance_matrix):
+    # Generate all permutations of the objects, starting from the given object
+    remaining_objects = list(range(num_objects))
+    remaining_objects.remove(starting_object)
+    permutations = list(itertools.permutations(remaining_objects))
+    permutations = [(starting_object, ) + perm for perm in permutations]
 
-# Find the optimal order with the minimum distance
-min_distance = float('inf')
-optimal_order = None
+    # Find the optimal order with the minimum distance
+    min_distance = float('inf')
+    optimal_order = None
 
-for perm in permutations:
-    distance = calculate_total_distance(perm, distance_matrix)
-    if distance < min_distance:
-        min_distance = distance
-        optimal_order = perm
+    for perm in permutations:
+        distance = calculate_total_distance(perm, distance_matrix)
+        if distance < min_distance:
+            min_distance = distance
+            optimal_order = perm
+
+    return optimal_order, min_distance
+
+# Specify the starting object
+starting_object = 1
+
+# Find the optimal order and minimum distance
+optimal_order, min_distance = find_optimal_order(starting_object, distance_matrix)
 
 # Output the optimal order and the minimum distance
 print("Optimal Order of Objects:", optimal_order)
